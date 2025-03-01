@@ -324,7 +324,7 @@ def merge_crops(video_file, gaps):
         cmd = [
             "ffmpeg",
             "-hwaccel",
-            "auto",  # Utilize hardware acceleration
+            "auto",
             "-i",
             video_file,
             "-ss",
@@ -334,19 +334,19 @@ def merge_crops(video_file, gaps):
             "-c:v",
             "libx264",
             "-crf",
-            "23",  # Quality setting for video
+            "23",
             "-preset",
-            "fast",  # Fast preset with good balance
+            "fast",
             "-c:a",
-            "aac",
-            "-b:a",
-            "192k",  # Higher audio quality
-            "-ac",
-            "2",
+            # Change from 'aac' to 'pcm_s16le' for uncompressed audio
+            "pcm_s16le",
             "-ar",
-            "44100",
+            "44100",  # Ensure sample rate is appropriate for WAV
+            "-ac",
+            "2",  # Stereo channels
             output_file,
         ]
+
         try:
             subprocess.run(
                 cmd,
@@ -365,6 +365,7 @@ def merge_crops(video_file, gaps):
             f.write(f"file '{output_file}'\n")
 
     # Merge all cropped video files into one
+
     concat_cmd = [
         "ffmpeg",
         "-f",
@@ -374,15 +375,14 @@ def merge_crops(video_file, gaps):
         "-i",
         "inputs.txt",
         "-c:v",
-        "libx264",  # Re-encode for compatibility
+        "libx264",
         "-preset",
         "fast",
         "-crf",
         "23",
         "-c:a",
-        "aac",
-        "-b:a",
-        "192k",
+        # Change from 'aac' to 'pcm_s16le' for uncompressed audio in merge
+        "pcm_s16le",
         "merged_output.mp4",
     ]
     try:

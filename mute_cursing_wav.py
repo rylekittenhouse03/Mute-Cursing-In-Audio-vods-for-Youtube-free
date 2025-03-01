@@ -16,7 +16,7 @@ import re
 from datetime import datetime, timedelta
 import syncio
 
-MODEL_SIZE = "large-v3"
+MODEL_SIZE = "medium"
 SPLIT_IN_MS = 60
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -167,6 +167,8 @@ def convert_video_to_audio(video_file, audio_output):
 def remove_audio_from_video(video_file, video_output):
     cmd = [
         "ffmpeg",
+        "-hwaccel",
+        "auto",
         "-y",
         "-i",
         video_file,
@@ -370,24 +372,23 @@ def process_files(av_paths):
             cmd = [
                 "ffmpeg",
                 "-hwaccel",
-                "auto",  # Enable hardware acceleration
+                "auto",
                 "-i",
                 av_path,
-                "-y",  # Overwrite output files without asking
+                "-y",
                 "-vcodec",
                 "libx264",
                 "-preset",
-                "fast",  # Use a fast preset for better balance
+                "fast",
                 "-crf",
-                "23",  # Use a lower CRF for improved quality
+                "23",
                 "-c:a",
-                "aac",
-                "-b:a",
-                "192k",  # Higher audio bitrate for better quality
-                "-ac",
-                "2",
+                # Change from 'aac' to 'pcm_s16le' for uncompressed audio
+                "pcm_s16le",
                 "-ar",
-                "44100",
+                "44100",  # Ensure sample rate is appropriate for WAV
+                "-ac",
+                "2",  # Stereo channels
                 temp,
             ]
             try:
@@ -442,6 +443,8 @@ def main(audio_path, video_):
                 f"\n\nProcessing {audio_path}...@@@@@@@@@@@@@@@@@@@\n\nindex {counter+1} of {len(enums)}\n\n@@@@@@@@@@@@@@@@@@@\n\n"
             )
             transcriber.transcribe_and_censor(audio_path)
+
+
     else:
         print(f"Processing {audio_path}...")
         transcriber.transcribe_and_censor(audio_path)
@@ -483,8 +486,14 @@ def main(audio_path, video_):
                         l.write("".join(files_))
     except Exception as e:
         print(str(e))
+    if temp_folder:
+        try:
+            shutil.rmtree(temp_folder)  # Remove temp folder after processing
+            print('\n\nsuccessfully deleted temp\n\n')
+        except Exception as e:
+            print(f"Error deleting temp folder: {e}")
     print("\nits\ndone\nnow\n")
-
+    
 
 def handler():
     file_paths = select_files()

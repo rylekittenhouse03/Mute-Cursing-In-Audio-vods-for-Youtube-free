@@ -13,7 +13,7 @@ import json
 
 
 segment_duration = 3000
-buff_ratio = 1.05
+buff_ratio = 1.25
 CURSE_WORD_FILE = 'curse_words.csv'
 
 sample_audio_path = 'looperman.wav'
@@ -63,28 +63,13 @@ def read_curse_words_from_csv(CURSE_WORD_FILE):
 
 
 def load_wav_as_np_array(wav_file_path):
+    # Ensure we handle stereo or mono consistently
     try:
-        with wave.open(wav_file_path, "rb") as wav_file:
-            # Ensure that the audio file is mono
-            if wav_file.getnchannels() != 1:
-                raise ValueError("Only mono audio files are supported.")
-
-            # Extract audio frames
-            frames = wav_file.readframes(wav_file.getnframes())
-
-            # Convert audio frames to float64 NumPy array
-            audio_data = np.frombuffer(
-                frames, dtype=np.int16).astype(np.float32)
-
-            # Normalize the audio data
-            audio_data /= np.iinfo(np.int16).max
-
-            # Return the audio data and the sample rate
-            return audio_data, wav_file.getframerate()
-    except wave.Error as e:
-        print(f"An error occurred while reading the WAV file: {wav_file_path}")
-        print(e)
-    return sf.read(wav_file_path, dtype='float32')
+        audio_data, sample_rate = sf.read(wav_file_path, dtype="float32")
+        return audio_data, sample_rate
+    except Exception as e:
+        print(f"An error occurred while reading the WAV file: {e}")
+        return None, None
 
 
 def get_word_samples(word, sample_rate):
@@ -101,9 +86,17 @@ def get_word_samples(word, sample_rate):
 def apply_combined_fades(audio, sample_rate, start_time, stop_time, fade_duration=0.01):
     # Convert times to samples
     global buff_ratio
+    min_silence_duration = 0.25
     original_start = 0
     original_start = start_time
     diff = stop_time - start_time
+
+    if diff < min_silence_duration:
+        additional_needed = min_silence_duration - diff
+        # Split additional silence equally at start and end
+        start_time -= additional_needed / 2
+        stop_time += additional_needed / 2
+
     start_time = (stop_time - (diff * buff_ratio))
     # stop_time = (original_start + (diff * buff_ratio))
 
