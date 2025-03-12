@@ -16,7 +16,7 @@ import re
 from datetime import datetime, timedelta
 import syncio
 
-MODEL_SIZE = "medium"
+MODEL_SIZE = "large-v3"
 SPLIT_IN_MS = 60
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 

@@ -13,7 +13,7 @@ import json
 
 
 segment_duration = 3000
-buff_ratio = 1.25
+buff_ratio = 1.15
 CURSE_WORD_FILE = 'curse_words.csv'
 
 sample_audio_path = 'looperman.wav'
@@ -86,7 +86,7 @@ def get_word_samples(word, sample_rate):
 def apply_combined_fades(audio, sample_rate, start_time, stop_time, fade_duration=0.01):
     # Convert times to samples
     global buff_ratio
-    min_silence_duration = 0.25
+    min_silence_duration = 0.4
     original_start = 0
     original_start = start_time
     diff = stop_time - start_time
@@ -98,7 +98,7 @@ def apply_combined_fades(audio, sample_rate, start_time, stop_time, fade_duratio
         stop_time += additional_needed / 2
 
     start_time = (stop_time - (diff * buff_ratio))
-    # stop_time = (original_start + (diff * buff_ratio))
+    stop_time = (original_start + (diff * buff_ratio))
 
     fade_length = int(fade_duration * sample_rate)
     start_sample = int(start_time * sample_rate)
