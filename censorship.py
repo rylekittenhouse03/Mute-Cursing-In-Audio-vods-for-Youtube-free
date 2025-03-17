@@ -13,20 +13,23 @@ import json
 
 
 segment_duration = 3000
-buff_ratio = 1.15
-CURSE_WORD_FILE = 'curse_words.csv'
+buff_ratio = 1.25
+CURSE_WORD_FILE = "curse_words.csv"
 
-sample_audio_path = 'looperman.wav'
+sample_audio_path = "looperman.wav"
 transcripts = ""
 exports = ""
 new_trans_path = Path.cwd()
 new_trans_path = Path(str(new_trans_path) + "\\transcripts")
 
 # 0.4 IS 0.2 ADDITIONAL SECONDS BEFORE AND AFTER CURSE ON TOP OF EXISTING SILENCE.
+ADJUST_SILENCE = 1.25
 
 
 class PortableNoiseReduction:
-    def __init__(self, array: np.ndarray, start_time: float, end_time: float, sample_rate: int):
+    def __init__(
+        self, array: np.ndarray, start_time: float, end_time: float, sample_rate: int
+    ):
         self.array = array
         self.start_time = (start_time - 1) if start_time > 0 else 0
         self.end_time = end_time + 1
@@ -38,8 +41,11 @@ class PortableNoiseReduction:
         end_sample = int(self.end_time * self.sample_rate)
 
         # Extract segment for noise reduction
-        segment = self.array[:,
-                             start_sample:end_sample] if self.array.ndim == 2 else self.array[start_sample:end_sample]
+        segment = (
+            self.array[:, start_sample:end_sample]
+            if self.array.ndim == 2
+            else self.array[start_sample:end_sample]
+        )
 
         # Apply noise reduction
         reduced_noise_segment = nr.reduce_noise(y=segment, sr=self.sample_rate)
@@ -55,7 +61,7 @@ class PortableNoiseReduction:
 
 def read_curse_words_from_csv(CURSE_WORD_FILE):
     curse_words_list = []
-    with open(CURSE_WORD_FILE, newline='') as csvfile:
+    with open(CURSE_WORD_FILE, newline="") as csvfile:
         lines = [line for line in csvfile.readlines() if line != ""]
     lines_update = [line.lower().strip() for line in lines if line != ""]
     return lines_update
@@ -72,8 +78,8 @@ def load_wav_as_np_array(wav_file_path):
 
 
 def get_word_samples(word, sample_rate):
-    start_time = word['start']
-    end_time = word['end']
+    start_time = word["start"]
+    end_time = word["end"]
 
     # Convert the start and end times to sample indices
     start_sample = int(start_time * sample_rate)
@@ -85,19 +91,19 @@ def get_word_samples(word, sample_rate):
 def apply_combined_fades(audio, sample_rate, start_time, stop_time, fade_duration=0.01):
     # Convert times to samples
     global buff_ratio
-    min_silence_duration = 0.6
+    min_silence_duration = 0.5
     original_start = 0
     original_start = start_time
     diff = stop_time - start_time
-
-    start_time = (stop_time - (diff * buff_ratio))
-    stop_time = (original_start + (diff * buff_ratio))
 
     if diff < min_silence_duration:
         additional_needed = min_silence_duration - diff
         # Split additional silence equally at start and end
         start_time -= additional_needed / 2
         stop_time += additional_needed / 2
+
+    start_time = stop_time - (diff * buff_ratio)
+    stop_time = (original_start + (diff * buff_ratio))
 
     fade_length = int(fade_duration * sample_rate)
     start_sample = int(start_time * sample_rate)
@@ -123,28 +129,30 @@ def apply_combined_fades(audio, sample_rate, start_time, stop_time, fade_duratio
 
 
 def logger(message):
-    with open('log.txt', "w") as f:
+    with open("log.txt", "w") as f:
         f.write(message + "\n")
 
 
-def mute_curse_words(audio_data, sample_rate, transcription_result, curse_words_list, log=True):
+def mute_curse_words(
+    audio_data, sample_rate, transcription_result, curse_words_list, log=True
+):
     audio_data_muted = np.copy(audio_data)
     # curse_words_set = set(word.lower() for word in curse_words_list)
 
     for word in transcription_result:
-        if len(word['word']) < 3:
+        if len(word["word"]) < 3:
             continue
         matched_curse = next(
-            (curse for curse in curse_words_list if curse in word['word'].lower()), None)
+            (curse for curse in curse_words_list if curse in word["word"].lower()), None
+        )
         if matched_curse:
             if log == True:
                 print(
-                    f"curse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}")
-            try:
-                audio_data_muted = apply_combined_fades(
-                audio_data_muted, sample_rate, word['start'], word['end'])
-            except Exception as e:
-                print(str(f'{e}\nerror in mute curse enumeration\n'))
+                    f"curse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}"
+                )
+            audio_data_muted = apply_combined_fades(
+                audio_data_muted, sample_rate, word["start"], word["end"]
+            )
             """
             potential
             take word['probability'] look at ratio, and if it is below a certain threshold, then mute the word"""
@@ -155,14 +163,16 @@ def convert_stereo(f):
     return NumpyMono(f)
 
 
-def find_curse_words(audio_content, sample_rate, results, CURSE_WORD_FILE=CURSE_WORD_FILE):
+def find_curse_words(
+    audio_content, sample_rate, results, CURSE_WORD_FILE=CURSE_WORD_FILE
+):
     curses = read_curse_words_from_csv(CURSE_WORD_FILE)
     curse_words_set = set(curses)
     return mute_curse_words(audio_content, sample_rate, results, curse_words_set)
 
 
 def process_audio_batch(trans_audio):
-    max_threads = 10
+    max_threads = 8
     threads = []
     processed_paths = {}
 
@@ -181,8 +191,7 @@ def process_audio_batch(trans_audio):
         # Sample way to track processed paths. Implement according to the actual process_audio
         processed_paths[threadnumb] = f"{audio}_processed"
 
-        thread = threading.Thread(
-            target=process_audio, args=(audio, threadnumb, trans))
+        thread = threading.Thread(target=process_audio, args=(audio, threadnumb, trans))
         threads.append(thread)
         thread.start()
 
@@ -197,13 +206,12 @@ def combine_wav_files(segment_paths):
         return
 
     output_nam = Path(segment_paths[0]).name
-    output_path = Path(segment_paths[0]).parent.parent / \
-        f"{output_nam}combined.wav"
-    print(f'\n\ncombining!\n\n{segment_paths}\n\n')
-    with wave.open(str(output_path), 'w') as outfile:
+    output_path = Path(segment_paths[0]).parent.parent / f"{output_nam}combined.wav"
+    print(f"\n\ncombining!\n\n{segment_paths}\n\n")
+    with wave.open(str(output_path), "w") as outfile:
         # Initialize parameters
         for _, segment_path in enumerate(segment_paths):
-            with wave.open(segment_path, 'r') as infile:
+            with wave.open(segment_path, "r") as infile:
                 if not outfile.getnframes():
                     outfile.setparams(infile.getparams())
                 outfile.writeframes(infile.readframes(infile.getnframes()))
@@ -214,45 +222,47 @@ def combine_wav_files(segment_paths):
     home = os.path.expanduser("~")
     # Construct the path to the user's download folder based on the OS
     download_folder = os.path.join(home, "Downloads")
-    outfile_finished = os.path.join(
-        download_folder, f"{output_nam}combined_output.wav")
+    outfile_finished = os.path.join(download_folder, f"{output_nam}combined_output.wav")
     shutil.copyfile(output_path, outfile_finished)
     return outfile_finished
 
 
 def convert_json_format(input_filename, output_filename):
-    with open(input_filename, 'r', encoding='utf-8') as infile:
+    with open(input_filename, "r", encoding="utf-8") as infile:
         data = json.load(infile)
 
     simplified_data = []
-    for segment in data.get('segments', []):
-        for word_info in segment.get('words', []):
-            simplified_data.append({
-                "word": word_info['word'].strip(r"',.\"-_/`?!; ").lower(),
-                "start": word_info['start'],
-                "end": word_info['end'],
-                'probability': word_info['probability']
-            })
+    for segment in data.get("segments", []):
+        for word_info in segment.get("words", []):
+            simplified_data.append(
+                {
+                    "word": word_info["word"].strip(r"',.\"-_/`?!; ").lower(),
+                    "start": word_info["start"],
+                    "end": word_info["end"],
+                    "probability": word_info["probability"],
+                }
+            )
 
-    with open(output_filename, 'w', encoding='utf-8') as outfile:
+    with open(output_filename, "w", encoding="utf-8") as outfile:
         json.dump(simplified_data, outfile, indent=4)
 
-    print(
-        f'The data has been successfully converted and saved to: {output_filename}')
+    print(f"The data has been successfully converted and saved to: {output_filename}")
     return simplified_data, output_filename
 
 
 def process_audio(audio_file, transcript_file=None):
     global processed_paths
-    print('converting to stereo')
-    print('reading audio')
+    print("converting to stereo")
+    print("reading audio")
     audio_obj = NumpyMono(audio_file)
-    print('process json')
+    print("process json")
     results, clean_json = convert_json_format(
-        transcript_file, f'{transcript_file}_new.json')
-    print('find curse words')
+        transcript_file, f"{transcript_file}_new.json"
+    )
+    print("find curse words")
     audio_obj.np_array = find_curse_words(
-        audio_obj.np_array, audio_obj.sample_rate, results)
-    print('exporting file now....')
+        audio_obj.np_array, audio_obj.sample_rate, results
+    )
+    print("exporting file now....")
     audio_obj.numpy_to_wav()
     return audio_obj.output_file_name, clean_json
