@@ -16,7 +16,7 @@ import re
 from datetime import datetime, timedelta
 import syncio
 
-MODEL_SIZE = "large-v3"
+MODEL_SIZE = "small"
 SPLIT_IN_MS = 60
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -66,7 +66,7 @@ def split_audio(audio_file, output_dir, segment_duration=SPLIT_IN_MS):
         "-c:a",
         "pcm_s16le",  # Uncompressed audio for best quality
         "-ac",
-        "2",
+        "1",
         "-ar",
         "44100",
         output_pattern,
@@ -157,7 +157,7 @@ def convert_video_to_audio(video_file, audio_output):
         "-ar",
         "44100",
         "-ac",
-        "2",
+        "1",
         audio_output,
     ]
     subprocess.run(cmd, check=True)
@@ -215,7 +215,7 @@ def add_audio_to_video(video_file, audio_file, output_video):
         "-b:a",
         "192k",  # Higher bitrate for improved audio quality
         "-ac",
-        "2",
+        "1",
         "-ar",
         "44100",
         "-map",
@@ -388,7 +388,7 @@ def process_files(av_paths):
                 "-ar",
                 "44100",  # Ensure sample rate is appropriate for WAV
                 "-ac",
-                "2",  # Stereo channels
+                "1",  # Stereo channels
                 temp,
             ]
             try:

@@ -23,7 +23,6 @@ new_trans_path = Path.cwd()
 new_trans_path = Path(str(new_trans_path) + "\\transcripts")
 
 # 0.4 IS 0.2 ADDITIONAL SECONDS BEFORE AND AFTER CURSE ON TOP OF EXISTING SILENCE.
-ADJUST_SILENCE = 1.25
 
 
 class PortableNoiseReduction:
@@ -86,19 +85,19 @@ def get_word_samples(word, sample_rate):
 def apply_combined_fades(audio, sample_rate, start_time, stop_time, fade_duration=0.01):
     # Convert times to samples
     global buff_ratio
-    min_silence_duration = 0.4
+    min_silence_duration = 0.6
     original_start = 0
     original_start = start_time
     diff = stop_time - start_time
+
+    start_time = (stop_time - (diff * buff_ratio))
+    stop_time = (original_start + (diff * buff_ratio))
 
     if diff < min_silence_duration:
         additional_needed = min_silence_duration - diff
         # Split additional silence equally at start and end
         start_time -= additional_needed / 2
         stop_time += additional_needed / 2
-
-    start_time = (stop_time - (diff * buff_ratio))
-    stop_time = (original_start + (diff * buff_ratio))
 
     fade_length = int(fade_duration * sample_rate)
     start_sample = int(start_time * sample_rate)
@@ -141,8 +140,11 @@ def mute_curse_words(audio_data, sample_rate, transcription_result, curse_words_
             if log == True:
                 print(
                     f"curse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}")
-            audio_data_muted = apply_combined_fades(
+            try:
+                audio_data_muted = apply_combined_fades(
                 audio_data_muted, sample_rate, word['start'], word['end'])
+            except Exception as e:
+                print(str(f'{e}\nerror in mute curse enumeration\n'))
             """
             potential
             take word['probability'] look at ratio, and if it is below a certain threshold, then mute the word"""
@@ -160,7 +162,7 @@ def find_curse_words(audio_content, sample_rate, results, CURSE_WORD_FILE=CURSE_
 
 
 def process_audio_batch(trans_audio):
-    max_threads = 5
+    max_threads = 10
     threads = []
     processed_paths = {}
 
