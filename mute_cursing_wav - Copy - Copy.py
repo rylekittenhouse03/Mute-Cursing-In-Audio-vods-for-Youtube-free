@@ -16,8 +16,8 @@ import re
 from datetime import datetime, timedelta
 import syncio
 
-MODEL_SIZE = "small"
-SPLIT_IN_MS = 30
+MODEL_SIZE = "medium.en"
+SPLIT_IN_MS = 60
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 print("loading model")
@@ -295,6 +295,7 @@ class AudioTranscriber:
         self.json_paths = []
         return self.model.transcribe(
             audio_path,
+            compression_ratio_threshold=5,
             verbose=True,
             word_timestamps=True,
             language=language,
@@ -314,11 +315,13 @@ class AudioTranscriber:
         print("outputting transcript files")
 
         if not small:
+            result.to_srt_vtt(srt_path, word_level=False)
             result.to_txt(txt_path)
             self.text_paths.append(txt_path)
             self.srt_paths.append(srt_path)
             self.text_parts += 1
         else:
+            result.to_srt_vtt(srt_path, word_level=False)
             self.srt_small = srt_path
 
         result.to_txt(f"{srt_path}".replace(".srt", ".txt"))
@@ -340,6 +343,8 @@ class AudioTranscriber:
         resultSmall = result
         result.split_by_length(max_chars=42)
         self.save_transcription(audio_path, result)
+        resultSmall.split_by_length(max_chars=35)
+        self.save_transcription(audio_path, resultSmall, True)
         aud, self.clean_json = self.censor_cursing(audio_path)
         self.clean_audio_paths.append(aud)
         self.clean_json_paths.append(self.clean_json)
@@ -387,7 +392,10 @@ def process_files(av_paths):
                 temp,
             ]
             try:
-                subprocess.run(cmd, check=True)
+                subprocess.run(
+                    cmd,
+                    check=True
+                )
                 av_path = temp
                 video_path = av_path
                 av_path = convert_video_to_audio(
@@ -436,6 +444,7 @@ def main(audio_path, video_):
             )
             transcriber.transcribe_and_censor(audio_path)
 
+
     else:
         print(f"Processing {audio_path}...")
         transcriber.transcribe_and_censor(audio_path)
@@ -446,6 +455,8 @@ def main(audio_path, video_):
 
     comb_path = combine_wav_files(transcriber.clean_audio_paths)
 
+    transcriber.srt_combine(transcriber.srt_paths)
+    transcriber.srt_combine(transcriber.srt_paths_small)
     orig_video = ""
     new_video = ""
     processed_audio = ""
@@ -478,20 +489,20 @@ def main(audio_path, video_):
     if temp_folder:
         try:
             shutil.rmtree(temp_folder)  # Remove temp folder after processing
-            print("\n\nsuccessfully deleted temp\n\n")
+            print('\n\nsuccessfully deleted temp\n\n')
         except Exception as e:
             print(f"Error deleting temp folder: {e}")
     print("\nits\ndone\nnow\n")
-
+    
 
 def handler():
     file_paths = select_files()
-    print("the init process can take a moment, please be patient. starting now.")
+    print('the init process can take a moment, please be patient. starting now.')
     processed_data = process_files(file_paths)
 
     def process_audio_files(audio_paths, videos_):
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=8
+            max_workers=4
         ) as executor:  # using ThreadPoolExecutor for CPU thread optimizations
             futures = [
                 executor.submit(main, audio_path, video_)
