@@ -317,85 +317,19 @@ def convert_to_ffmpeg_time(ms):
 
 
 def merge_crops(video_file, gaps):
-    output_files = []
+    commands = []
     for i, (start, end) in enumerate(gaps):
-        # Start processing each segment
-        output_file = f"output_{i}.mp4"
-        cmd = [
-            "ffmpeg",
-            "-hwaccel",
-            "auto",
-            "-i",
-            video_file,
-            "-ss",
-            str(start),
-            "-to",
-            str(end),
-            "-c:v",
-            "libx264",
-            "-crf",
-            "23",
-            "-preset",
-            "fast",
-            "-c:a",
-            # Change from 'aac' to 'pcm_s16le' for uncompressed audio
-            "pcm_s16le",
-            "-ar",
-            "44100",  # Ensure sample rate is appropriate for WAV
-            "-ac",
-            "2",  # Stereo channels
-            output_file,
-        ]
+        commands.append(
+            f"ffmpeg -i {video_file} -ss {start} -to {end} -c copy output_{i}.mp4")
+    commands.append(
+        "ffmpeg -f concat -safe 0 -i inputs.txt -c copy output.mp4")
 
-        try:
-            subprocess.run(
-                cmd,
-                check=True,
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                text=True,
-            )
-            output_files.append(output_file)
-        except subprocess.CalledProcessError as e:
-            print(f"Error processing segment {i}: {e.stderr}")
+    with open('inputs.txt', 'w') as f:
+        for i in range(len(gaps)):
+            f.write(f"file 'output_{i}.mp4'\n")
 
-    # Prepare input file list for concatenation
-    with open("inputs.txt", "w") as f:
-        for output_file in output_files:
-            f.write(f"file '{output_file}'\n")
-
-    # Merge all cropped video files into one
-
-    concat_cmd = [
-        "ffmpeg",
-        "-f",
-        "concat",
-        "-safe",
-        "0",
-        "-i",
-        "inputs.txt",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "fast",
-        "-crf",
-        "23",
-        "-c:a",
-        # Change from 'aac' to 'pcm_s16le' for uncompressed audio in merge
-        "pcm_s16le",
-        "merged_output.mp4",
-    ]
-    try:
-        subprocess.run(
-            concat_cmd,
-            check=True,
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            text=True,
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"Error during merging: {e.stderr}")
-
+    for command in commands:
+        subprocess.run(command, shell=True)
 
 def crop_video(input_srt):
     print("Select the input video file to process:")
@@ -405,6 +339,7 @@ def crop_video(input_srt):
         return
     merge_crops(input_video,
                     process_srt(input_srt))
+
 
 
 def load_json(infile):

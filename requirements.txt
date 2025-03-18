@@ -1,10 +1,6 @@
---extra-index-url https://download.pytorch.org/whl/cu118
 setuptools
 pyinstaller
 stable-ts
-torch==2.0.1 
-torchvision==0.15.2 
-torchaudio==2.0.2 
 moviepy
 scipy
 pydub
