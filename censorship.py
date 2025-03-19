@@ -10,17 +10,8 @@ import threading
 import os
 import shutil
 import json
+from _globals import *
 
-
-segment_duration = 3000
-buff_ratio = 1.25
-CURSE_WORD_FILE = "curse_words.csv"
-
-sample_audio_path = "looperman.wav"
-transcripts = ""
-exports = ""
-new_trans_path = Path.cwd()
-new_trans_path = Path(str(new_trans_path) + "\\transcripts")
 
 # 0.4 IS 0.2 ADDITIONAL SECONDS BEFORE AND AFTER CURSE ON TOP OF EXISTING SILENCE.
 
@@ -74,6 +65,7 @@ def load_wav_as_np_array(wav_file_path):
     except Exception as e:
         print(f"An error occurred while reading the WAV file: {e}")
         return None, None
+    
 def get_word_samples(word, sample_rate):
     start_time = word["start"]
     end_time = word["end"]
@@ -92,10 +84,11 @@ def apply_combined_fades(audio, sample_rate, start_time, stop_time, fade_duratio
         raise ValueError("stop_time must be greater than start_time")
 
     # Ensure min silence duration
-    if diff < min_silence_duration:
+    if diff < min_silence_duration:        
         additional_needed = min_silence_duration - diff
-        start_time -= additional_needed / 2
-        stop_time += additional_needed / 2
+        start_time -= additional_needed / 2  # Simplified calculation
+        stop_time += additional_needed / 2   # Simplified calculation
+
 
     # Safeguard against negative start_time
     if start_time < 0:

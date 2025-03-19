@@ -15,13 +15,29 @@ from censorship import *
 import re
 from datetime import datetime, timedelta
 import syncio
+from _globals import *
 
-MODEL_SIZE = "small"
-SPLIT_IN_MS = 30
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
-print("loading model")
-MODEL = stable_whisper.load_model(MODEL_SIZE, device="cuda")
+transcription_options = {
+    "verbose": True,  # Show progress and details
+    "temperature": (0.0, 0.2, 0.4), # Lower temperatures for more accurate transcriptions
+    "compression_ratio_threshold": 2.0, #Slightly more strict to avoid bad compression artifacts
+    "logprob_threshold": -1.0, #Adjust as needed for your audio characteristics. Lower values increase strictness.
+    "no_speech_threshold": 0.5,  #Reduce false positives
+    "condition_on_previous_text": True, # Helps maintain context across segments.
+    "word_timestamps": True,  # Necessary for precise timing adjustments.
+    "regroup": True,  # Improves segment grouping after VAD.
+    "suppress_silence": True,  # Removes silent sections
+    "suppress_word_ts": True,  # Adjusts timestamps based on silence
+    "use_word_position": True, # helps with timestamps accuracy in silence suppression
+    "vad": True, #Use Voice Activity Detection for better silence handling.  Might require installing silero-vad separately
+    "vad_threshold": 0.3, #Lower threshold makes VAD more sensitive to quieter speech (experiment!)
+    "min_word_dur": 0.1, #Adjust to minimum length for valid words, avoids small noise bursts getting transcribed as words.
+    "min_silence_dur": 0.2,  #Minimum length for silence sections to be suppressed (experiment!)
+    "only_voice_freq": True,  # Focus on speech frequency range, reducing noise
+    "denoiser": "demucs", # Experiment with this - rnnoise is pretty good. Check the supported_denoiser list in the docs.
+    "mel_first": False, # Avoids excessive memory usage for long files
+    "language": "english"
+}
 
 
 def clean_path(path_str):
@@ -68,7 +84,7 @@ def split_audio(audio_file, output_dir, segment_duration=SPLIT_IN_MS):
         "-ac",
         "2",
         "-ar",
-        "44100",
+        "48000",
         output_pattern,
     ]
 
@@ -155,7 +171,7 @@ def convert_video_to_audio(video_file, audio_output):
         "-acodec",
         "pcm_s16le",
         "-ar",
-        "44100",
+        "48000",
         "-ac",
         "2",
         audio_output,
@@ -217,7 +233,7 @@ def add_audio_to_video(video_file, audio_file, output_video):
         "-ac",
         "2",
         "-ar",
-        "44100",
+        "48000",
         "-map",
         "0:v:0",
         "-map",
@@ -295,9 +311,7 @@ class AudioTranscriber:
         self.json_paths = []
         return self.model.transcribe(
             audio_path,
-            verbose=True,
-            word_timestamps=True,
-            language=language,
+            **transcription_options
         )
 
     def save_transcription(self, audio_path, result, small=False):
@@ -381,7 +395,7 @@ def process_files(av_paths):
                 # Change from 'aac' to 'pcm_s16le' for uncompressed audio
                 "pcm_s16le",
                 "-ar",
-                "44100",  # Ensure sample rate is appropriate for WAV
+                "48000",  # Ensure sample rate is appropriate for WAV
                 "-ac",
                 "2",  # Stereo channels
                 temp,
