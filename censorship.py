@@ -85,8 +85,10 @@ def apply_combined_fades(audio, sample_rate, start_time, stop_time, fade_duratio
 
     # Ensure min silence duration
     if diff < min_silence_duration:      
-        start_time = stop_time - (diff * buff_ratio)
-        stop_time = original_start + (diff * buff_ratio)
+        split_silence_minimum = round(min_silence_duration/2, 2)
+        start_time = stop_time - (diff + split_silence_minimum)
+        stop_time = original_start + (diff + split_silence_minimum)
+        diff = stop_time - start_time
         # additional_needed = min_silence_duration - diff
         # start_time -= additional_needed / 2  # Simplified calculation
         # stop_time += additional_needed / 2   # Simplified calculation
