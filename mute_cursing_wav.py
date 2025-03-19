@@ -15,13 +15,7 @@ from censorship import *
 import re
 from datetime import datetime, timedelta
 import syncio
-
-MODEL_SIZE = "medium.en"
-SPLIT_IN_MS = 15
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
-print("loading model")
-MODEL = stable_whisper.load_model(MODEL_SIZE, device="cuda")
+from _globals import *
 
 transcription_options = {
     "verbose": True,  # Show progress and details
