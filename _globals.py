@@ -8,9 +8,9 @@ SPLIT_IN_MS = 15
 print("loading model")
 MODEL = stable_whisper.load_model(MODEL_SIZE, device="cuda")
 
-min_silence_duration = 0.3
+min_silence_duration = 0.2
 segment_duration = 3000
-buff_ratio = 1.2
+buff_ratio = 1.05
 CURSE_WORD_FILE = "curse_words.csv"
 
 sample_audio_path = "looperman.wav"
@@ -24,7 +24,7 @@ transcription_options = {
     "temperature": (0.0, 0.2, 0.4), # Lower temperatures for more accurate transcriptions
     "compression_ratio_threshold": 2.0, #Slightly more strict to avoid bad compression artifacts
     "logprob_threshold": -1.5, #Adjust as needed for your audio characteristics. Lower values increase strictness.
-    "no_speech_threshold": 0.4,  #Reduce false positives
+    "no_speech_threshold": 0.35,  #Reduce false positives
     "condition_on_previous_text": True, # Helps maintain context across segments.
     "word_timestamps": True,  # Necessary for precise timing adjustments.
     "regroup": True,  # Improves segment grouping after VAD.

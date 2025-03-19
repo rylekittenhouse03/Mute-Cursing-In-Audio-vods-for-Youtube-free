@@ -478,23 +478,12 @@ def main(audio_path, video_):
 
 def handler():
     file_paths = select_files()
-    print("the init process can take a moment, please be patient. starting now.")
+    print("Starting processing...")
     processed_data = process_files(file_paths)
 
-    def process_audio_files(audio_paths, videos_):
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=8
-        ) as executor:  # using ThreadPoolExecutor for CPU thread optimizations
-            futures = [
-                executor.submit(main, audio_path, video_)
-                for audio_path, video_ in zip(audio_paths, videos_)
-            ]
-            for future in concurrent.futures.as_completed(futures):
-                future.result()
-
-    audio_paths = [data[0] for data in processed_data if data[0] is not None]
-    videos_ = [data[1] for data in processed_data]
-    process_audio_files(audio_paths, videos_)
+    for audio_path, video_data in processed_data:  # Iterating through data
+        if audio_path:
+            main(audio_path, video_data)
 
 
 if __name__ == "__main__":
