@@ -17,28 +17,6 @@ from datetime import datetime, timedelta
 import syncio
 from _globals import *
 
-transcription_options = {
-    "verbose": True,  # Show progress and details
-    "temperature": (0.0, 0.2, 0.4), # Lower temperatures for more accurate transcriptions
-    "compression_ratio_threshold": 2.0, #Slightly more strict to avoid bad compression artifacts
-    "logprob_threshold": -1.0, #Adjust as needed for your audio characteristics. Lower values increase strictness.
-    "no_speech_threshold": 0.5,  #Reduce false positives
-    "condition_on_previous_text": True, # Helps maintain context across segments.
-    "word_timestamps": True,  # Necessary for precise timing adjustments.
-    "regroup": True,  # Improves segment grouping after VAD.
-    "suppress_silence": True,  # Removes silent sections
-    "suppress_word_ts": True,  # Adjusts timestamps based on silence
-    "use_word_position": True, # helps with timestamps accuracy in silence suppression
-    "vad": True, #Use Voice Activity Detection for better silence handling.  Might require installing silero-vad separately
-    "vad_threshold": 0.3, #Lower threshold makes VAD more sensitive to quieter speech (experiment!)
-    "min_word_dur": 0.1, #Adjust to minimum length for valid words, avoids small noise bursts getting transcribed as words.
-    "min_silence_dur": 0.2,  #Minimum length for silence sections to be suppressed (experiment!)
-    "only_voice_freq": True,  # Focus on speech frequency range, reducing noise
-    "denoiser": "demucs", # Experiment with this - rnnoise is pretty good. Check the supported_denoiser list in the docs.
-    "mel_first": False, # Avoids excessive memory usage for long files
-    "language": "english"
-}
-
 
 def clean_path(path_str):
     path = Path(path_str)
