@@ -6,17 +6,16 @@
 
 make sure these are installed:
 
-- Python 3.10
-- https://pytorch.org/get-started/locally/
-- ffmpeg:
--  https://github.com/icedterminal/ffmpeg-installer/releases/download/6.1.1.20240201/FFmpeg_Full.msi
--  or
--  https://github.com/Vouk/ffmpeg/releases/download/autobuild-2025-03-10-19-20/FFmpeg.GPL.Installer.msi
+- Python 3.10 https://pytorch.org/get-started/locally/
+- ffmpeg: https://github.com/icedterminal/ffmpeg-installer/releases/download/6.1.1.20240201/FFmpeg_Full.msi
+-  or https://github.com/Vouk/ffmpeg/releases/download/autobuild-2025-03-10-19-20/FFmpeg.GPL.Installer.msi
 - run one-click-installer.bat
 
+Newbie guide: 
 - download: https://github.com/samfisherirl/Mute-Cursing-In-MP4-MP3-for-Youtube/archive/refs/heads/main.zip
 - download and install (if you dont have python 310): https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe
 - During install, make sure to click "add to PATH": https://miro.medium.com/v2/resize:fit:1344/0*7nOyowsPsGI19pZT.png
+- Install ffmpeg https://github.com/Vouk/ffmpeg/releases/download/autobuild-2025-03-10-19-20/FFmpeg.GPL.Installer.msi
 - Find a permanate place for the app and unzip main.zip, click and run `one-click-installer.bat`
 - Create a new file called "curse_words.csv" with single curse words, one per line. 
 - First run will require a download that takes a short bit.  
