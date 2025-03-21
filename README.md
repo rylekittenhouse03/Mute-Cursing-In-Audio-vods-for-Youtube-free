@@ -2,6 +2,10 @@
  
 ## Requires 
 
+### Setup Guide: 
+
+make sure these are installed:
+
 - Python 3.10
 - https://pytorch.org/get-started/locally/
 - ffmpeg:
@@ -9,8 +13,6 @@
 -  or
 -  https://github.com/Vouk/ffmpeg/releases/download/autobuild-2025-03-10-19-20/FFmpeg.GPL.Installer.msi
 - run one-click-installer.bat
-
-### Setup Guide: 
 
 - download: https://github.com/samfisherirl/Mute-Cursing-In-MP4-MP3-for-Youtube/archive/refs/heads/main.zip
 - download and install (if you dont have python 310): https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe
