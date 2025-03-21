@@ -4,7 +4,10 @@
 
 - Python 3.10
 - https://pytorch.org/get-started/locally/
-- ffmpeg https://github.com/icedterminal/ffmpeg-installer/releases/download/6.1.1.20240201/FFmpeg_Full.msi
+- ffmpeg:
+-  https://github.com/icedterminal/ffmpeg-installer/releases/download/6.1.1.20240201/FFmpeg_Full.msi
+-  or
+-  https://github.com/Vouk/ffmpeg/releases/download/autobuild-2025-03-10-19-20/FFmpeg.GPL.Installer.msi
 - run one-click-installer.bat
 
 ### Setup Guide: 
