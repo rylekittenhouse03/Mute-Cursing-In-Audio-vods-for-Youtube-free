@@ -6,7 +6,7 @@
 
 make sure these are installed:
 
-- Python 3.10 https://pytorch.org/get-started/locally/
+- Python 3.10  https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe
 - ffmpeg: https://github.com/icedterminal/ffmpeg-installer/releases/download/6.1.1.20240201/FFmpeg_Full.msi
 -  or https://github.com/Vouk/ffmpeg/releases/download/autobuild-2025-03-10-19-20/FFmpeg.GPL.Installer.msi
 - run one-click-installer.bat
