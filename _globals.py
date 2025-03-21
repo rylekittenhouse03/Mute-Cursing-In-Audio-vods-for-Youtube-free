@@ -10,7 +10,7 @@ MODEL = stable_whisper.load_model(MODEL_SIZE, device="cuda")
 
 min_silence_duration = 0.175
 segment_duration = 3000
-buff_ratio = 1.03
+buff_ratio = 1.08
 CURSE_WORD_FILE = "curse_words.csv"
 
 sample_audio_path = "looperman.wav"

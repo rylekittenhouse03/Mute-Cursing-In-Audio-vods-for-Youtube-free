@@ -157,7 +157,7 @@ def mute_curse_words(
         
         if matched_curse:
             print(
-                f"curse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}"
+                f"\n\n\n\ncurse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}\n\n\n\n"
             )
             audio_data_muted = apply_combined_fades(
                 audio_data_muted, sample_rate, word["start"], word["end"]
@@ -231,9 +231,9 @@ def combine_wav_files(segment_paths):
     home = os.path.expanduser("~")
     # Construct the path to the user's download folder based on the OS
     download_folder = os.path.join(home, "Downloads")
-    outfile_finished = os.path.join(download_folder, f"{output_nam}combined_output.wav")
-    shutil.copyfile(output_path, outfile_finished)
-    return outfile_finished
+    # outfile_finished = os.path.join(download_folder, f"{output_nam}combined_output.wav")
+    # shutil.copyfile(output_path, outfile_finished)
+    return output_path
 
 
 def convert_json_format(input_filename, output_filename):

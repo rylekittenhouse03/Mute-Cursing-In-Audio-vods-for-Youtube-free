@@ -16,6 +16,7 @@ import re
 from datetime import datetime, timedelta
 import syncio
 from _globals import *
+import sys
 
 
 def clean_path(path_str):
@@ -409,7 +410,7 @@ def process_files(av_paths):
 
 
 def main(audio_path, video_):
-    global transcript_paths
+    global transcript_paths, temp_folder
     transcript_paths = []
     print("loading model")
     transcriber = AudioTranscriber(model_size=MODEL_SIZE, device="cuda")
@@ -437,7 +438,6 @@ def main(audio_path, video_):
         print(str(e))
 
     comb_path = combine_wav_files(transcriber.clean_audio_paths)
-
     orig_video = ""
     new_video = ""
     processed_audio = ""
@@ -475,6 +475,17 @@ def main(audio_path, video_):
             print(f"Error deleting temp folder: {e}")
     print("\nits\ndone\nnow\n")
 
+import signal
+
+def cleanup():  
+    global temp_folder
+    # Handle cleanup before exit
+    try:
+        shutil.rmtree(temp_folder)  # Remove temp folder after processing
+        print("\n\nsuccessfully deleted temp\n\n")
+    except Exception as e:
+        print(f"Error deleting temp folder: {e}")
+
 
 def handler():
     file_paths = select_files()
@@ -485,6 +496,15 @@ def handler():
         if audio_path:
             main(audio_path, video_data)
 
+def signal_handler(sig, frame):
+    # Intercept termination signals
+    cleanup()
+    sys.exit(0)
 
 if __name__ == "__main__":
+    # Register signal handlers for Windows (CTRL+C) and termination
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    if os.name == 'nt':  # Windows-specific
+        signal.signal(signal.SIGBREAK, signal_handler)  # Handle CTRL+Break
     handler()
