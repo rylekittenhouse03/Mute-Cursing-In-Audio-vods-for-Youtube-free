@@ -157,7 +157,7 @@ def mute_curse_words(
         
         if matched_curse:
             print(
-                f"\n\n\n\ncurse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}\n\n\n\n"
+                f"\n\ncurse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}\n"
             )
             audio_data_muted = apply_combined_fades(
                 audio_data_muted, sample_rate, word["start"], word["end"]

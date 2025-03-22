@@ -39,12 +39,12 @@ def copy_file_with_time_stamp(file_path):
     return new_file_path
 
 
-def split_audio(audio_file, output_dir, segment_duration=SPLIT_IN_MS):
+def split_audio(audio_file, output_dir, segment_duration=SPLIT_IN_MS, sr='16000'):
     # Prepare paths and output pattern
     audio_path = clean_path(audio_file)
     output_dir = audio_path.parent
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    output_pattern = str(output_dir / f"{audio_path.stem}_{timestamp}_%03d.wav")
+    output_pattern = str(output_dir / f"{audio_path.stem}_{sr}__%03d.wav")
 
     # Command for splitting the audio
     cmd = [
@@ -63,7 +63,7 @@ def split_audio(audio_file, output_dir, segment_duration=SPLIT_IN_MS):
         "-ac",
         "2",
         "-ar",
-        "48000",
+        sr,
         output_pattern,
     ]
 
@@ -76,7 +76,7 @@ def split_audio(audio_file, output_dir, segment_duration=SPLIT_IN_MS):
         return []
 
     # Return sorted list of segment files
-    segment_files = sorted(output_dir.glob(f"{audio_path.stem}_{timestamp}_*.wav"))
+    segment_files = sorted(output_dir.glob(f"{audio_path.stem}_{sr}__*.wav"))
     return [str(file) for file in segment_files]
 
 
@@ -331,7 +331,6 @@ class AudioTranscriber:
         """Process an audio file, transcribe it and save the results."""
         result = self.transcribe_audio(audio_path)
         resultSmall = result
-        result.split_by_length(max_chars=42)
         self.save_transcription(audio_path, result)
         aud, self.clean_json = self.censor_cursing(audio_path)
         self.clean_audio_paths.append(aud)
@@ -416,10 +415,12 @@ def main(audio_path, video_):
     transcriber = AudioTranscriber(model_size=MODEL_SIZE, device="cuda")
     print("finished")
     log_ = JSONLog(audio_path)
-    enums = split_audio(audio_path, "output")
+    enums = split_audio(audio_path, "output", sr='48000')
     temp_folder = None
     if enums:
         for counter, audio_path in enumerate(enums):
+            if counter == 0:
+                transcriber.model.transcribe(audio_path, **transcription_options)
             if not temp_folder and audio_path:
                 temp_folder = Path(audio_path).parent.__str__()
             print("wav_file_path type:", type(audio_path))
