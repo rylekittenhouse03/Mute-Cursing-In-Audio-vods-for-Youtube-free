@@ -145,7 +145,7 @@ def mute_curse_words(
     audio_data, sample_rate, transcription_result, curse_words_list, log=True
 ):
     audio_data_muted = np.copy(audio_data)
-
+    print('\n\n\n\n\n')
     for word in transcription_result:
         word_text = word["word"].lower()
 
@@ -157,7 +157,7 @@ def mute_curse_words(
         
         if matched_curse:
             print(
-                f"\n\ncurse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}\n"
+                f"\ncurse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}\n"
             )
             audio_data_muted = apply_combined_fades(
                 audio_data_muted, sample_rate, word["start"], word["end"]
