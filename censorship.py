@@ -66,6 +66,7 @@ def load_wav_as_np_array(wav_file_path):
         print(f"An error occurred while reading the WAV file: {e}")
         return None, None
 
+
 def get_word_samples(word, sample_rate):
     start_time = word["start"]
     end_time = word["end"]
@@ -73,25 +74,31 @@ def get_word_samples(word, sample_rate):
     end_sample = int(end_time * sample_rate)
     return (start_sample, end_sample)
 
-def apply_combined_fades(audio, sample_rate, start_time, stop_time, fade_duration=0.01):
-    global buff_ratio
-    min_silence_duration = 0.3
+
+def apply_combined_fades(
+    audio, sample_rate, start_time, stop_time, tier, fade_duration=0.01
+):
+    global tier1_buffer, tier2_buffer
     original_start = start_time
     diff = stop_time - start_time
-
+    if tier == 1:
+        buffer = tier1_buffer
+    else:
+        buffer = tier2_buffer
     # Safeguard against negative durations
     if diff < 0:
         raise ValueError("stop_time must be greater than start_time")
 
     # Ensure min silence duration
-    if diff < min_silence_duration:      
-        split_silence_minimum = round(min_silence_duration/2, 2)
+    if diff < min_silence_duration:
+        split_silence_minimum = round(min_silence_duration / 2, 3)
         start_time = stop_time - (diff + split_silence_minimum)
         stop_time = original_start + (diff + split_silence_minimum)
         diff = stop_time - start_time
-        # additional_needed = min_silence_duration - diff
-        # start_time -= additional_needed / 2  # Simplified calculation
-        # stop_time += additional_needed / 2   # Simplified calculation
+    else:
+        # Adjust start_time and stop_time with buff_ratio
+        start_time = stop_time - (diff * buffer)
+        stop_time = original_start + (diff * buffer)
 
     # Safeguard against negative start_time
     if start_time < 0:
@@ -100,10 +107,6 @@ def apply_combined_fades(audio, sample_rate, start_time, stop_time, fade_duratio
     # Safeguard against exceeding audio length
     if stop_time > len(audio) / sample_rate:
         stop_time = len(audio) / sample_rate
-
-    # Adjust start_time and stop_time with buff_ratio
-    start_time = stop_time - (diff * buff_ratio)
-    stop_time = original_start + (diff * buff_ratio)
 
     fade_length = int(fade_duration * sample_rate)
     start_sample = int(start_time * sample_rate)
@@ -134,6 +137,7 @@ def apply_combined_fades(audio, sample_rate, start_time, stop_time, fade_duratio
 
     return audio
 
+
 def logger(message):
     with open("log.txt", "w") as f:
         f.write(message + "\n")
@@ -141,26 +145,46 @@ def logger(message):
 
 import numpy as np
 
+
 def mute_curse_words(
-    audio_data, sample_rate, transcription_result, curse_words_list, log=True
+    audio_data,
+    sample_rate,
+    transcription_result,
+    curse_words_tier1,
+    curse_words_tier2,
+    log=True,
 ):
-    audio_data_muted = np.copy(audio_data)
-    print('\n\n\n\n\n')
+    audio_data_muted = np.copy(audio_data)  # Create copy once for mutation
+
+    if log:
+        print("\n\n\n\n\n")  # Keep logging as requested
+
     for word in transcription_result:
         word_text = word["word"].lower()
 
-        if len(word_text) < 3:
+        if len(word_text) < 3:  # Skip short words early
             continue
-        
-        # Check if any curse word is in the current word
-        matched_curse = next((curse for curse in curse_words_set if curse in word_text), None)
-        
-        if matched_curse:
-            print(
-                f"\ncurse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}\n"
+
+        # Check tier1 curses first, then tier2
+        matched_curse = next(
+            (curse for curse in curse_words_tier1 if curse in word_text), None
+        )
+        tier = 1 if matched_curse else None
+
+        if not matched_curse:
+            matched_curse = next(
+                (curse for curse in curse_words_tier2 if curse in word_text), None
             )
+            tier = 2 if matched_curse else None
+
+        if matched_curse:
+            if log:
+                print(
+                    f"\ncurse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}\n"
+                )
+            # Pass tier to apply_combined_fades
             audio_data_muted = apply_combined_fades(
-                audio_data_muted, sample_rate, word["start"], word["end"]
+                audio_data_muted, sample_rate, word["start"], word["end"], tier
             )
 
     return audio_data_muted
@@ -169,15 +193,21 @@ def mute_curse_words(
 def convert_stereo(f):
     return NumpyMono(f)
 
-curses = read_curse_words_from_csv(CURSE_WORD_FILE)
-curse_words_list = set(curses)
-curse_words_set = set(curse.lower() for curse in curse_words_list)
 
-def find_curse_words(
-    audio_content, sample_rate, results, CURSE_WORD_FILE=CURSE_WORD_FILE
-):
-    global curse_words_set
-    return mute_curse_words(audio_content, sample_rate, results, curse_words_set)
+curses_tier1 = read_curse_words_from_csv(CURSE_TIER1)
+curses_tier1_list = set(curses_tier1)
+curses_tier1_set = set(curse.lower() for curse in curses_tier1_list)
+
+curses_tier2 = read_curse_words_from_csv(CURSE_TIER2)
+curse_tier2_list = set(curses_tier2)
+curse_tier2_set = set(curse.lower() for curse in curse_tier2_list)
+
+
+def find_curse_words(audio_content, sample_rate, results):
+    global curse_words_tier1, curse_tier2_set
+    return mute_curse_words(
+        audio_content, sample_rate, results, curses_tier1_set, curse_tier2_set
+    )
 
 
 def process_audio_batch(trans_audio):

@@ -4,14 +4,16 @@ from pathlib import Path
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 MODEL_SIZE = r"turbo"
-SPLIT_IN_MS = 30
+SPLIT_IN_MS = 20
 print("loading model")
 MODEL = stable_whisper.load_model(MODEL_SIZE, device="cuda")
 
-min_silence_duration = 0.1
+min_silence_duration = 0.015
 segment_duration = 3000
-buff_ratio = 1.03
-CURSE_WORD_FILE = "curse_words.csv"
+tier1_buffer = 1.01
+tier2_buffer = 0.8
+CURSE_TIER1 = "curse_words_tier1.csv"
+CURSE_TIER2 = "curse_words_tier2.csv"
 
 sample_audio_path = "looperman.wav"
 transcripts = ""
@@ -28,7 +30,7 @@ transcription_options = {
     ),  # Lower temperatures for more accurate transcriptions
     "compression_ratio_threshold": 2.0,  # Slightly more strict to avoid bad compression artifacts
     "logprob_threshold": -2,  # Adjust as needed for your audio characteristics. Lower values increase strictness.
-    "no_speech_threshold": 0.4,  # Reduce false positives
+    "no_speech_threshold": 0.3,  # Reduce false positives
     "condition_on_previous_text": True,  # Helps maintain context across segments.
     "word_timestamps": True,  # Necessary for precise timing adjustments.
     "regroup": True,  # Improves segment grouping after VAD.
