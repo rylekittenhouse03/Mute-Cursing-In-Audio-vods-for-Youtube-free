@@ -8,7 +8,7 @@ SPLIT_IN_MS = 20
 print("loading model")
 MODEL = stable_whisper.load_model(MODEL_SIZE, device="cuda")
 
-min_silence_duration = 0.175
+min_silence_duration = 0.1
 segment_duration = 3000
 tier1_buffer = 1.01
 tier2_buffer = 0.95
