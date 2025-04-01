@@ -39,12 +39,13 @@ def copy_file_with_time_stamp(file_path):
     return new_file_path
 
 
-def split_audio(audio_file, output_dir, segment_duration=SPLIT_IN_MS, sr='16000'):
+def split_audio(audio_file, output_dir, segment_duration=SPLIT_IN_MS, sr='44100'):
     # Prepare paths and output pattern
     audio_path = clean_path(audio_file)
     output_dir = audio_path.parent
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    output_pattern = str(output_dir / f"{audio_path.stem}_{sr}__%03d.wav")
+    timestamp = datetime.now().strftime("%H%M%S")
+    filename_patt = f"{audio_path.stem}_{timestamp}__%03d.wav"
+    output_pattern = str(output_dir / filename_patt)
 
     # Command for splitting the audio
     cmd = [
@@ -76,7 +77,7 @@ def split_audio(audio_file, output_dir, segment_duration=SPLIT_IN_MS, sr='16000'
         return []
 
     # Return sorted list of segment files
-    segment_files = sorted(output_dir.glob(f"{audio_path.stem}_{sr}__*.wav"))
+    segment_files = sorted(output_dir.glob(f"{audio_path.stem}_{timestamp}__*.wav"))
     return [str(file) for file in segment_files]
 
 
@@ -150,7 +151,7 @@ def convert_video_to_audio(video_file, audio_output):
         "-acodec",
         "pcm_s16le",
         "-ar",
-        "48000",
+        "44100",
         "-ac",
         "2",
         audio_output,
@@ -212,7 +213,7 @@ def add_audio_to_video(video_file, audio_file, output_video):
         "-ac",
         "2",
         "-ar",
-        "48000",
+        "44100",
         "-map",
         "0:v:0",
         "-map",
@@ -373,7 +374,7 @@ def process_files(av_paths):
                 # Change from 'aac' to 'pcm_s16le' for uncompressed audio
                 "pcm_s16le",
                 "-ar",
-                "48000",  # Ensure sample rate is appropriate for WAV
+                "44100",  # Ensure sample rate is appropriate for WAV
                 "-ac",
                 "2",  # Stereo channels
                 temp,
@@ -407,6 +408,34 @@ def process_files(av_paths):
             results.append((None, video_bi))
     return results
 
+import signal
+
+
+def cleanup():
+    global temp_folder
+    # Handle cleanup before exit
+    try:
+        shutil.rmtree(temp_folder)  # Remove temp folder after processing
+        print("\n\nsuccessfully deleted temp\n\n")
+    except Exception as e:
+        print(f"Error deleting temp folder: {e}")
+
+
+def handler():
+    file_paths = select_files()
+    print("Starting processing...")
+    processed_data = process_files(file_paths)
+
+    for audio_path, video_data in processed_data:  # Iterating through data
+        if audio_path:
+            main(audio_path, video_data)
+
+
+def signal_handler(sig, frame):
+    # Intercept termination signals
+    cleanup()
+    sys.exit(0)
+
 
 def main(audio_path, video_):
     global transcript_paths, temp_folder
@@ -415,7 +444,7 @@ def main(audio_path, video_):
     transcriber = AudioTranscriber(model_size=MODEL_SIZE, device="cuda")
     print("finished")
     log_ = JSONLog(audio_path)
-    enums = split_audio(audio_path, "output", sr='48000')
+    enums = split_audio(audio_path, "output", sr='44100')
     temp_folder = None
     if enums:
         for counter, audio_path in enumerate(enums):
@@ -475,32 +504,6 @@ def main(audio_path, video_):
         except Exception as e:
             print(f"Error deleting temp folder: {e}")
     print("\nits\ndone\nnow\n")
-
-import signal
-
-def cleanup():  
-    global temp_folder
-    # Handle cleanup before exit
-    try:
-        shutil.rmtree(temp_folder)  # Remove temp folder after processing
-        print("\n\nsuccessfully deleted temp\n\n")
-    except Exception as e:
-        print(f"Error deleting temp folder: {e}")
-
-
-def handler():
-    file_paths = select_files()
-    print("Starting processing...")
-    processed_data = process_files(file_paths)
-
-    for audio_path, video_data in processed_data:  # Iterating through data
-        if audio_path:
-            main(audio_path, video_data)
-
-def signal_handler(sig, frame):
-    # Intercept termination signals
-    cleanup()
-    sys.exit(0)
 
 if __name__ == "__main__":
     # Register signal handlers for Windows (CTRL+C) and termination
