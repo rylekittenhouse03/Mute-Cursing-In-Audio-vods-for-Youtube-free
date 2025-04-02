@@ -44,7 +44,7 @@ def split_audio(audio_file, output_dir, segment_duration=SPLIT_IN_MS, sr='44100'
     audio_path = clean_path(audio_file)
     output_dir = audio_path.parent
     timestamp = datetime.now().strftime("%H%M%S")
-    filename_patt = f"{audio_path.stem}_{timestamp}__%03d.wav"
+    filename_patt = f"{audio_path.stem}_{timestamp}_%03d.wav"
     output_pattern = str(output_dir / filename_patt)
 
     # Command for splitting the audio
@@ -77,7 +77,7 @@ def split_audio(audio_file, output_dir, segment_duration=SPLIT_IN_MS, sr='44100'
         return []
 
     # Return sorted list of segment files
-    segment_files = sorted(output_dir.glob(f"{audio_path.stem}_{timestamp}__*.wav"))
+    segment_files = sorted(output_dir.glob(f"{audio_path.stem}_{timestamp}_*.wav"))
     return [str(file) for file in segment_files]
 
 

@@ -4,11 +4,11 @@ from pathlib import Path
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 MODEL_SIZE = r"turbo"
-SPLIT_IN_MS = 20
+SPLIT_IN_MS = 29
 print("loading model")
 MODEL = stable_whisper.load_model(MODEL_SIZE, device="cuda")
 
-min_silence_duration = 0.1
+min_silence_duration = 0.09
 segment_duration = 3000
 tier1_buffer = 1.01
 tier2_buffer = 0.95
@@ -33,7 +33,7 @@ transcription_options = {
     ),  # Lower temperatures for more accurate transcriptions
     "compression_ratio_threshold": None,  # Slightly more strict to avoid bad compression artifacts
     "logprob_threshold": -2,  # Adjust as needed for your audio characteristics. Lower values increase strictness.
-    "no_speech_threshold": 0.2,  # Reduce false positives
+    "no_speech_threshold": 0.15,  # Reduce false positives
     "condition_on_previous_text": True,  # Helps maintain context across segments.
     "word_timestamps": True,  # Necessary for precise timing adjustments.
     "regroup": True,  # Improves segment grouping after VAD.
