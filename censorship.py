@@ -76,129 +76,64 @@ def get_word_samples(word, sample_rate):
 
 
 def apply_combined_fades(
-    audio,
-    sample_rate,
-    start_time,
-    stop_time,
-    tier,
-    fade_duration=0.01,  # Add min_silence_duration as parameter
+    audio, sample_rate, start_time, stop_time, tier, fade_duration=0.01
 ):
-    """Applies fade-out, silence, and fade-in to an audio segment."""
-    # Use global buffers (consider passing as arguments for better practice)
-    global tier1_buffer, tier2_buffer, min_silence_duration
-
+    global tier1_buffer, tier2_buffer
     original_start = start_time
-    original_stop = stop_time  # Store original stop time for buffer calculation
-    original_diff = original_stop - original_start  # Calculate original duration
-
-    if original_diff < 0:
+    diff = stop_time - start_time
+    if tier == 1:
+        buffer = tier1_buffer
+    else:
+        buffer = tier2_buffer
+    # Safeguard against negative durations
+    if diff < 0:
         raise ValueError("stop_time must be greater than start_time")
 
-    # Check if the original duration is less than the minimum required silence
-    if original_diff < min_silence_duration:
-        # Calculate the center of the original interval
-        center_time = (original_start + original_stop) / 2.0
-        # Calculate half of the minimum duration
-        half_min_duration = min_silence_duration / 2.0
-        # Set new start and stop times centered around the original center, ensuring minimum duration
-        start_time = center_time - half_min_duration
-        stop_time = center_time + half_min_duration
-        # print(f"Applying min duration: {start_time=}, {stop_time=}") # Debug print
+    # Ensure min silence duration
+    if diff < min_silence_duration:
+        split_silence_minimum = round(min_silence_duration / 2, 3)
+        start_time = stop_time - (diff + split_silence_minimum)
+        stop_time = original_start + (diff + split_silence_minimum)
+        diff = stop_time - start_time
     else:
-        # Apply buffer if duration is sufficient
-        buffer = tier1_buffer if tier == 1 else tier2_buffer
-        # Calculate amount to expand on each side based on the original difference and buffer
-        expand_amount = (original_diff * buffer) / 2.0
-        # Adjust start time earlier
-        start_time = original_start - expand_amount
-        # Adjust stop time later
-        stop_time = original_stop + expand_amount
-        # print(f"Applying buffer: {start_time=}, {stop_time=}") # Debug print
+        # Adjust start_time and stop_time with buff_ratio
+        start_time = stop_time - (diff * buffer)
+        stop_time = original_start + (diff * buffer)
 
-    # Ensure start time is not negative
+    # Safeguard against negative start_time
     if start_time < 0:
         start_time = 0
 
-    # Ensure stop time does not exceed audio length
-    audio_duration = len(audio) / sample_rate
-    if stop_time > audio_duration:
-        stop_time = audio_duration
+    # Safeguard against exceeding audio length
+    if stop_time > len(audio) / sample_rate:
+        stop_time = len(audio) / sample_rate
 
-    # Recalculate difference after adjustments and boundary checks
-    adjusted_diff = stop_time - start_time
-    # Ensure the final interval is not negative after boundary adjustments
-    if adjusted_diff < 0:
-        # This might happen if original interval was near boundary and min_duration pushed it out
-        # Or if boundary checks drastically changed times. Handle as zero length silence.
-        # Alternatively, could raise an error or skip processing this interval.
-        # Here we effectively skip silencing by setting start=stop
-        stop_time = start_time
-        adjusted_diff = 0
-
-    # Convert times to samples
+    fade_length = int(fade_duration * sample_rate)
     start_sample = int(start_time * sample_rate)
     stop_sample = int(stop_time * sample_rate)
 
-    # Ensure sample indices are within bounds
+    # Ensure valid sample indices
     start_sample = max(0, start_sample)
     stop_sample = min(len(audio), stop_sample)
 
-    # Ensure start_sample is not greater than stop_sample after all adjustments
-    if start_sample >= stop_sample:
-        # print(f"Skipping silence: start_sample >= stop_sample ({start_sample} >= {stop_sample})") # Debug print
-        return audio  # Interval is zero or negative length, nothing to silence
+    # Apply fade out
+    fade_out_end = start_sample + fade_length
+    if fade_out_end > audio.shape[0]:
+        fade_out_end = audio.shape[0]
+    fade_out_curve = np.linspace(1.0, 0.0, fade_out_end - start_sample)
+    audio[start_sample:fade_out_end] *= fade_out_curve
 
-    # Calculate fade length in samples
-    fade_length = int(fade_duration * sample_rate)
+    # Apply fade in
+    fade_in_start = stop_sample - fade_length
+    if fade_in_start < 0:
+        fade_in_start = 0
+    fade_in_curve = np.linspace(0.0, 1.0, stop_sample - fade_in_start)
+    if fade_in_start < stop_sample:  # Ensure valid range for multiplication
+        audio[fade_in_start:stop_sample] *= fade_in_curve
 
-    # Ensure fade length isn't longer than half the silence duration to avoid overlap issues
-    max_fade_length = (stop_sample - start_sample) // 2
-    if fade_length > max_fade_length:
-        fade_length = (
-            max_fade_length  # Adjust fade length if it's too long for the interval
-        )
-
-    # --- Apply Fade Out ---
-    # Calculate the end sample of the fade-out
-    fade_out_end_sample = start_sample + fade_length
-    # Ensure fade-out does not exceed the calculated stop_sample or audio bounds
-    fade_out_end_sample = min(fade_out_end_sample, stop_sample, len(audio))
-
-    # Calculate number of samples for the fade-out curve
-    fade_out_num_samples = fade_out_end_sample - start_sample
-    if fade_out_num_samples > 0:
-        # Create fade-out curve (linear from 1.0 to 0.0)
-        fade_out_curve = np.linspace(1.0, 0.0, fade_out_num_samples)
-        # Apply fade-out curve to the audio segment
-        audio[start_sample:fade_out_end_sample] *= fade_out_curve
-
-    # --- Apply Fade In ---
-    # Calculate the start sample of the fade-in
-    fade_in_start_sample = stop_sample - fade_length
-    # Ensure fade-in start is not before the calculated start_sample or audio bounds
-    fade_in_start_sample = max(fade_in_start_sample, start_sample, 0)
-
-    # Calculate number of samples for the fade-in curve
-    fade_in_num_samples = stop_sample - fade_in_start_sample
-    if fade_in_num_samples > 0:
-        # Create fade-in curve (linear from 0.0 to 1.0)
-        fade_in_curve = np.linspace(0.0, 1.0, fade_in_num_samples)
-        # Apply fade-in curve to the audio segment
-        audio[fade_in_start_sample:stop_sample] *= fade_in_curve
-
-    # --- Apply Silence ---
-    # Determine the actual start and end of the silence region (between fades)
-    silence_start_sample = (
-        fade_out_end_sample  # Silence starts right after fade-out ends
-    )
-    silence_stop_sample = (
-        fade_in_start_sample  # Silence stops right before fade-in starts
-    )
-
-    # Apply silence only if there is a gap between the end of fade-out and start of fade-in
-    if silence_start_sample < silence_stop_sample:
-        # Set the audio samples in the silence region to zero
-        audio[silence_start_sample:silence_stop_sample] = 0
+    # Ensure silence between the fades
+    if fade_out_end < fade_in_start:
+        audio[fade_out_end:fade_in_start] = 0
 
     return audio
 

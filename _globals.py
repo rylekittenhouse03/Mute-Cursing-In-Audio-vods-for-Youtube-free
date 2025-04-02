@@ -8,10 +8,10 @@ SPLIT_IN_MS = 29
 print("loading model")
 MODEL = stable_whisper.load_model(MODEL_SIZE, device="cuda")
 
-min_silence_duration = 0.05
+min_silence_duration = 0.08
 segment_duration = 3000
-tier1_buffer = 0.98
-tier2_buffer = 0.9
+tier1_buffer = 1.02
+tier2_buffer = 0.95
 CURSE_TIER1 = "curse_words_tier1.csv"
 CURSE_TIER2 = "curse_words_tier2.csv"
 

@@ -16,8 +16,8 @@ import re
 from datetime import datetime, timedelta
 import syncio
 
-MODEL_SIZE = "medium.en"
-SPLIT_IN_MS = 60
+MODEL_SIZE = "turbo"
+SPLIT_IN_MS = 30
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 print("loading model")
@@ -230,6 +230,132 @@ def add_audio_to_video(video_file, audio_file, output_video):
     os.remove(video_no_audio)
 
 
+
+class SrtProcessor: # Encapsulate methods within a class
+
+    def parse_time(self, time_str):
+        # Helper function to parse SRT time format HH:MM:SS,ms
+        match = re.match(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})", time_str)
+        if match:
+            h, m, s, ms = map(int, match.groups())
+            return timedelta(hours=h, minutes=m, seconds=s, milliseconds=ms)
+        raise ValueError(f"Invalid time format: {time_str}")
+
+    def format_time(self, td):
+        # Helper function to format timedelta back to SRT time format HH:MM:SS,ms
+        total_seconds = int(td.total_seconds())
+        milliseconds = int(td.microseconds / 1000)
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{hours:02}:{minutes:02}:{seconds:02},{milliseconds:03}"
+
+    def add_time(self, time_str, seconds_to_add):
+        # Adjusted add_time to handle seconds directly
+        original_time = self.parse_time(time_str)
+        new_time = original_time + timedelta(seconds=seconds_to_add)
+        return self.format_time(new_time)
+
+    def srt_combine(self, paths):
+        global SPLIT_IN_MS # Declare intent to use the global variable
+        combined_content = ""
+        subtitle_number = 1
+        additional_seconds = 0 # Changed variable name from additional_minutes to additional_seconds
+
+        for index, file_path in enumerate(paths):
+            if index > 0:
+                # Increment offset by the global SPLIT_IN_MS value for subsequent files
+                additional_seconds += SPLIT_IN_MS
+                combined_content += "\n\n" # Maintain separation between file contents
+
+            try: # Add error handling for file operations
+                with open(file_path, "r", encoding="utf-8") as file:
+                    lines = file.readlines()
+            except FileNotFoundError:
+                print(f"Warning: File not found {file_path}, skipping.")
+                # If a file is missing, decide how to handle the time offset.
+                # Option 1: Still increment time as if the segment existed (current behavior).
+                # Option 2: Don't increment time (requires adjusting the increment logic).
+                # Let's stick with Option 1 for now, meaning the gap remains.
+                continue # Skip processing this file
+            except Exception as e:
+                print(f"Error reading file {file_path}: {e}, skipping.")
+                continue # Skip processing this file
+
+
+            i = 0
+            while i < len(lines):
+                line = lines[i].strip()
+                if line.isdigit():
+                    # Check if the next line exists and contains '-->'
+                    if i + 1 < len(lines) and "-->" in lines[i+1]:
+                        combined_content += f"{subtitle_number}\n"
+                        subtitle_number += 1
+                        i += 1 # Move to the time line
+                        time_line = lines[i].strip()
+                        try: # Add error handling for time parsing/adding
+                            start_time, end_time = time_line.split(" --> ")
+                             # Use additional_seconds for time adjustment
+                            combined_content += f"{self.add_time(start_time, additional_seconds)} --> {self.add_time(end_time, additional_seconds)}\n"
+                        except ValueError as e:
+                            print(f"Warning: Skipping invalid time format in {file_path} at line {i+1}: {time_line} ({e})")
+                            # Skip the invalid entry (number, time, text)
+                            subtitle_number -= 1 # Decrement subtitle number as it was invalid
+                            while i + 1 < len(lines) and lines[i+1].strip() != "":
+                                i += 1 # Skip text lines associated with the invalid time
+                            i += 1 # Move past the blank line or end of file
+                            continue # Continue to the next potential subtitle number
+                        except Exception as e: # Catch other potential errors during time processing
+                            print(f"Warning: Error processing time in {file_path} at line {i+1}: {time_line} ({e})")
+                            subtitle_number -= 1
+                            while i + 1 < len(lines) and lines[i+1].strip() != "":
+                                i += 1
+                            i += 1
+                            continue
+                    else:
+                        # If it's a number but not followed by a time line, treat as text (or skip)
+                        # For now, let's assume it might be part of subtitle text if malformed
+                        combined_content += line + "\n"
+                elif "-->" in line:
+                     # Handle case where time line appears without preceding number (malformed SRT)
+                     # We might choose to ignore these or try to process if needed.
+                     # For simplicity, let's ignore lines starting with '-->' if not preceded by a number.
+                     print(f"Warning: Skipping malformed time line without preceding number in {file_path}: {line}")
+                     # Skip associated text lines until a blank line or new number
+                     while i + 1 < len(lines) and lines[i+1].strip() != "" and not lines[i+1].strip().isdigit():
+                         i += 1
+                elif line: # Only add non-empty lines that are not numbers or timecodes
+                    combined_content += line + "\n"
+                # Handle blank lines separating subtitles - already handled by loop structure and \n concatenation
+
+                i += 1
+            # Ensure the last subtitle block ends with a newline if needed by the format
+            if combined_content and not combined_content.endswith("\n\n"):
+                 if not combined_content.endswith("\n"):
+                     combined_content += "\n" # Add one newline if missing
+
+
+        if not paths: # Handle case with no input paths
+            print("Warning: No SRT files provided to combine.")
+            return
+
+        try: # Add error handling for output path generation/writing
+            # Construct output path relative to the *first* input file's parent directory
+            first_path = Path(paths[0])
+            # Use stem of the first file for the output name
+            output_name = f"{first_path.stem}_combined.srt"
+            # Place the combined file in the parent directory of the first file
+            output_file_path = first_path.parent.parent / output_name
+
+            with open(output_file_path, "w", encoding="utf-8") as file:
+                # Remove potential trailing blank lines before writing
+                file.write(combined_content.strip())
+            print(f"Combined SRT saved to: {output_file_path}") # Provide feedback
+        except IndexError:
+             print("Error: Input path list is empty, cannot determine output path.")
+        except Exception as e:
+             print(f"Error writing combined SRT file: {e}")
+
+
 class AudioTranscriber:
     def __init__(self, model_size="large-v3", device="cuda"):
         global MODEL
@@ -259,35 +385,11 @@ class AudioTranscriber:
         return added_time.strftime("%H:%M:%S,") + f"{milliseconds:03d}"
 
     def srt_combine(self, paths):
-        combined_content = ""
-        subtitle_number = 1
-        additional_minutes = 0
+        global SPLIT_IN_MS
+        processor = SrtProcessor()
+        processor.srt_combine(paths)
 
-        for index, file_path in enumerate(paths):
-            if index > 0:
-                combined_content += (
-                    "\n\n"  # Proper SRT separation between different files
-                )
-            with open(file_path, "r", encoding="utf-8") as file:
-                lines = file.readlines()
-            i = 0
-            while i < len(lines):
-                line = lines[i].strip()  # strip line-breaks to handle them manually
-                if line.isdigit():
-                    combined_content += f"{subtitle_number}\n"  # Add subtitle number
-                    subtitle_number += 1
-                elif "-->" in line:
-                    start_time, end_time = line.split(" --> ")
-                    combined_content += f"{self.add_time(start_time, additional_minutes)} --> {self.add_time(end_time, additional_minutes)}\n"
-                else:
-                    combined_content += line + "\n"  # Append other lines with newline
-                i += 1
-            additional_minutes += 1
 
-        name = Path(paths[0]).stem
-        output_file_prt = Path(paths[0]).parent.parent / f"{name}.srt"
-        with open(str(output_file_prt), "w", encoding="utf-8") as file:
-            file.write(combined_content)
 
     def transcribe_audio(self, audio_path, language="en", beam_size=5):
         """Transcribe the given audio file and return the transcription result."""
