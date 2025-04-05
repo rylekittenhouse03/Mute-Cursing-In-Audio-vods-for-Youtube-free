@@ -155,7 +155,7 @@ def mute_curse_words(
     log=True,
 ):
     audio_data_muted = np.copy(audio_data)  # Create copy once for mutation
-
+    any_cursing_found = False
     if log:
         print("\n\n\n\n\n")  # Keep logging as requested
 
@@ -178,6 +178,7 @@ def mute_curse_words(
             tier = 2 if matched_curse else None
 
         if matched_curse:
+            any_cursing_found = True
             if log:
                 print(
                     f"\ncurse:{matched_curse} -> transcript word:{word['word']} -> prob {word['probability']}\n"
@@ -187,7 +188,7 @@ def mute_curse_words(
                 audio_data_muted, sample_rate, word["start"], word["end"], tier
             )
 
-    return audio_data_muted
+    return audio_data_muted, any_cursing_found
 
 
 def convert_stereo(f):
@@ -299,9 +300,9 @@ def process_audio(audio_file, transcript_file=None):
         transcript_file, f"{transcript_file}_new.json"
     )
     print("find curse words")
-    audio_obj.np_array = find_curse_words(
+    audio_obj.np_array, any_cursing_found = find_curse_words(
         audio_obj.np_array, audio_obj.sample_rate, results
     )
     print("exporting file now....")
     audio_obj.numpy_to_wav()
-    return audio_obj.output_file_name, clean_json
+    return audio_obj.output_file_name, clean_json, any_cursing_found

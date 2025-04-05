@@ -333,7 +333,11 @@ class AudioTranscriber:
         result = self.transcribe_audio(audio_path)
         resultSmall = result
         self.save_transcription(audio_path, result)
-        aud, self.clean_json = self.censor_cursing(audio_path)
+        aud, self.clean_json, any_cursing_found = self.censor_cursing(audio_path)
+        if any_cursing_found:
+            result = self.transcribe_audio(aud)
+            self.save_transcription(aud, result)
+            aud, self.clean_json, any_cursing_found = self.censor_cursing(aud)
         self.clean_audio_paths.append(aud)
         self.clean_json_paths.append(self.clean_json)
 
